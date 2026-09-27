@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Znapy7sensi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#07070A; --orange:#FF6A1A; --red:#FF2D3D; --text:#F5F1EA; --muted:#B4AFC2;
+    --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+    --glass-border: rgba(255,255,255,0.18);
+    box-sizing:border-box;
+  }
+  *{box-sizing:border-box;}
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--bg); color:var(--text); overflow:hidden; font-family:"Rajdhani", system-ui, sans-serif; font-weight:500; }
+  h1,h2,h3,.brand{ font-family:"Orbitron", system-ui, sans-serif; }
+  input, button, select{ font-family:inherit; }
+
+  .bg-glow{ position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(60% 40% at 15% 0%, rgba(255,106,26,0.35), transparent 60%),
+      radial-gradient(50% 35% at 100% 100%, rgba(255,45,61,0.28), transparent 60%),
+      radial-gradient(80% 60% at 50% 120%, rgba(255,106,26,0.15), transparent 60%); }
+  .ember{ position:fixed; bottom:-10px; z-index:0; border-radius:50%; background:var(--orange); opacity:0.7; filter:blur(1px); animation:rise linear infinite; }
+  @keyframes rise{ 0%{ transform:translateY(0) translateX(0); opacity:0.8; } 100%{ transform:translateY(-110vh) translateX(20px); opacity:0; } }
+
+  .glass{ background:var(--glass-bg); backdrop-filter:blur(18px) saturate(160%); -webkit-backdrop-filter:blur(18px) saturate(160%);
+    border:1px solid var(--glass-border); box-shadow:0 8px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15); }
+
+  /* ---------- AUTH GATE ---------- */
+  #authGate{ position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .auth-card{ width:100%; max-width:380px; border-radius:22px; padding:30px 26px; }
+  .auth-tabs{ display:flex; gap:8px; margin-bottom:20px; }
+  .auth-tab{ flex:1; text-align:center; padding:10px; border-radius:12px; cursor:pointer; color:var(--muted); font-weight:600; }
+  .auth-tab.active{ background:rgba(255,106,26,0.18); color:var(--orange); }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:.85rem; color:var(--muted); margin-bottom:5px; }
+  .field input{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--glass-border);
+    background:rgba(255,255,255,0.06); color:var(--text); font-size:1rem; outline:none; }
+  .field input:focus{ border-color:var(--orange); }
+  .primary-btn{ width:100%; padding:13px; border:none; border-radius:14px; font-weight:700; font-size:1rem; cursor:pointer;
+    background:linear-gradient(90deg, var(--orange), var(--red)); color:#1A0A00; margin-top:6px; }
+  .primary-btn:active{ filter:brightness(.92); }
+  .primary-btn:disabled{ opacity:.6; }
+  .auth-msg{ font-size:.85rem; margin-top:12px; min-height:18px; }
+  .auth-msg.error{ color:#FF7A7A; }
+  .auth-msg.ok{ color:#7CE7A0; }
+  #appRoot{ display:none; }
+
+  /* ---------- menu ---------- */
+  #menuBtn{ position:fixed; z-index:60; top:calc(16px + env(safe-area-inset-top,0px)); left:16px; width:50px; height:50px; border-radius:16px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; }
+  #menuBtn span{ width:20px; height:2px; background:var(--orange); border-radius:2px; transition:transform .3s, opacity .3s; }
+  #menuBtn.open span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
+  #menuBtn.open span:nth-child(2){ opacity:0; }
+  #menuBtn.open span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+  #overlay{ position:fixed; inset:0; z-index:40; background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .35s ease; }
+  #overlay.open{ opacity:1; pointer-events:auto; }
+  #navPanel{ position:fixed; z-index:50; inset:0 auto 0 0; width:min(280px,80vw); padding:calc(90px + env(safe-area-inset-top,0px)) 26px 26px;
+    border-radius:0 22px 22px 0; transform:translateX(-105%); transition:transform .4s cubic-bezier(.2,.9,.25,1); overflow-y:auto; }
+  #navPanel.open{ transform:translateX(0); }
+  .nav-eyebrow{ color:var(--orange); font-weight:700; letter-spacing:.03em; font-size:.85rem; }
+  .nav-title{ font-size:1.3rem; margin:4px 0 6px; }
+  .nav-email{ color:var(--muted); font-size:.78rem; margin-bottom:20px; word-break:break-all; }
+  .nav-link{ display:flex; align-items:center; gap:10px; color:var(--text); text-decoration:none; font-size:1.05rem; font-weight:600;
+    padding:13px 12px; border-radius:12px; margin-bottom:8px; background:none; border:none; width:100%; text-align:left; cursor:pointer; }
+  .nav-link.current{ background:rgba(255,106,26,0.18); color:var(--orange); }
+  .nav-link.logout{ color:#FF8A8A; margin-top:12px; }
+
+  /* ---------- views ---------- */
+  .view{ position:fixed; inset:0; z-index:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:96px 20px calc(90px + env(safe-area-inset-bottom,0px)); opacity:0; pointer-events:none;
+    transform:translateX(24px) scale(.985); transition:opacity .45s ease, transform .45s cubic-bezier(.2,.9,.25,1); }
+  .view.active{ opacity:1; pointer-events:auto; transform:translateX(0) scale(1); }
+  .view-inner{ max-width:640px; margin:0 auto; }
+  .fade-item{ opacity:0; transform:translateY(16px); transition:opacity .5s ease, transform .5s ease; }
+  .view.active .fade-item{ opacity:1; transform:translateY(0); }
+  .fade-item:nth-child(1){ transition-delay:.05s; } .fade-item:nth-child(2){ transition-delay:.12s; }
+  .fade-item:nth-child(3){ transition-delay:.19s; } .fade-item:nth-child(4){ transition-delay:.26s; }
+  .fade-item:nth-child(5){ transition-delay:.33s; } .fade-item:nth-child(6){ transition-delay:.40s; }
+
+  .eyebrow{ color:var(--orange); font-weight:700; font-size:.9rem; letter-spacing:.02em; }
+  h1.brand{ font-size:clamp(2.3rem,9vw,3rem); margin:8px 0 6px;
+    background:linear-gradient(90deg, var(--orange), var(--red)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tagline{ color:var(--muted); max-width:32ch; font-size:1.05rem; }
+  h2{ font-size:1.4rem; margin:0 0 12px; }
+  p{ color:var(--muted); margin:0 0 10px; max-width:58ch; }
+  .card-block{ border-radius:18px; padding:18px 20px; margin-top:16px; }
+  .features{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  .features li{ border-radius:14px; padding:13px 16px; font-size:.98rem; }
+
+  .social-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+  .social-card{ display:flex; align-items:center; gap:12px; border-radius:16px; padding:14px; text-decoration:none; color:var(--text); }
+  .badge{ width:38px; height:38px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.75rem; }
+  .b-tiktok{ background:#69C9D0; color:#04262A; } .b-discord{ background:#8C9EFF; color:#0F1240; }
+  .b-whatsapp{ background:#3BC169; color:#08320E; } .b-instagram{ background:linear-gradient(135deg,#F58529,#DD2A7B,#8134AF); color:#fff; }
+
+  .grid-products{ display:grid; gap:16px; margin-top:16px; }
+  .card{ border-radius:20px; overflow:hidden; position:relative; }
+  .thumb{ height:130px; display:flex; align-items:center; justify-content:center; font-size:2.4rem;
+    background:linear-gradient(135deg, rgba(255,106,26,.28), rgba(255,45,61,.22)); }
+  .card-body{ padding:16px 18px; }
+  .card-body h3{ margin:0 0 4px; font-size:1.05rem; }
+  .price{ color:var(--orange); font-weight:700; margin-bottom:12px; }
+  .buy-btn{ display:flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(90deg, var(--orange), var(--red));
+    color:#1A0A00; text-decoration:none; font-weight:700; padding:12px; border-radius:14px; font-size:.95rem; }
+  .del-btn{ position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(255,45,61,0.85); color:#fff; font-weight:700; }
+  .empty-msg{ color:var(--muted); font-size:.9rem; padding:14px 0; }
+
+  .note{ border-radius:14px; padding:12px 14px; font-size:.82rem; color:var(--muted); margin-top:24px; }
+  footer.foot{ text-align:center; color:var(--muted); font-size:.82rem; padding:20px 0 4px; }
+
+  /* ---------- admin ---------- */
+  .admin-form{ display:grid; gap:10px; margin-top:14px; }
+  .admin-form input{ padding:11px 13px; border-radius:12px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.06); color:var(--text); }
+  .mini-btn{ padding:10px; border:none; border-radius:12px; font-weight:700; cursor:pointer; }
+  .mini-btn.orange{ background:linear-gradient(90deg, var(--orange), var(--red)); color:#1A0A00; }
+  .mini-btn.ghost{ background:rgba(255,255,255,0.08); color:var(--text); border:1px solid var(--glass-border); }
+  .user-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; border-radius:14px; padding:12px 14px; margin-bottom:10px; }
+  .user-info{ font-size:.85rem; color:var(--muted); }
+  .user-info b{ color:var(--text); display:block; font-size:.92rem; word-break:break-all; }
+  .tag{ font-size:.7rem; padding:2px 8px; border-radius:20px; margin-left:6px; }
+  .tag.admin{ background:rgba(255,106,26,.25); color:var(--orange); }
+  .tag.banned{ background:rgba(255,45,61,.25); color:#FF8A8A; }
+  .user-actions{ display:flex; flex-direction:column; gap:6px; }
+  .user-actions button{ font-size:.75rem; padding:6px 10px; }
+  .refresh-btn{ font-size:.78rem; padding:8px 12px; margin-bottom:12px; }
+
+  /* ---------- support flotante ---------- */
+  #supportBtn{ position:fixed; z-index:70; right:calc(18px + env(safe-area-inset-right,0px)); bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    width:58px; height:58px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem;
+    text-decoration:none; color:#08320E; background:radial-gradient(circle at 30% 30%, #4FE08A, #2FA968); box-shadow:0 8px 24px rgba(0,0,0,.45); }
+
+  @media (prefers-reduced-motion: reduce){ .view, .fade-item, .ember{ transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+<div class="ember" style="left:12%; width:5px; height:5px; animation-duration:7s;"></div>
+<div class="ember" style="left:34%; width:3px; height:3px; animation-duration:9s; animation-delay:1s;"></div>
+<div class="ember" style="left:58%; width:6px; height:6px; animation-duration:6.5s; animation-delay:2s;"></div>
+<div class="ember" style="left:78%; width:4px; height:4px; animation-duration:8s; animation-delay:.5s;"></div>
+<div class="ember" style="left:90%; width:3px; height:3px; animation-duration:10s; animation-delay:3s;"></div>
+
+<!-- ===== AUTH GATE ===== -->
+<div id="authGate">
+  <div class="auth-card glass">
+    <div class="nav-eyebrow" style="text-align:center;">ZONA SEGURA</div>
+    <h1 class="brand" style="font-size:1.6rem; text-align:center; margin-bottom:18px;">ZNAPY7SENSI</h1>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin">Iniciar sesión</div>
+      <div class="auth-tab" id="tabRegister">Registrarse</div>
+    </div>
+
+    <form id="loginForm">
+      <div class="field"><label>Correo</label><input type="email" id="loginEmail" required></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="loginPass" required></div>
+      <button class="primary-btn" type="submit">Entrar</button>
+    </form>
+
+    <form id="registerForm" style="display:none;">
+      <div class="field"><label>Correo</label><input type="email" id="regEmail" required></div>
+      <div class="field"><label>Contraseña (mínimo 6 caracteres)</label><input type="password" id="regPass" required minlength="6"></div>
+      <button class="primary-btn" type="submit">Crear cuenta</button>
+    </form>
+
+    <div class="auth-msg" id="authMsg"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="appRoot">
+  <button id="menuBtn" class="glass" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+  <div id="overlay"></div>
+  <nav id="navPanel" class="glass">
+    <div class="nav-eyebrow">MENÚ</div>
+    <div class="nav-title brand">ZNAPY7SENSI</div>
+    <div class="nav-email" id="navEmail"></div>
+    <button class="nav-link" data-view="hogar">🔥 Hogar</button>
+    <button class="nav-link" data-view="catalogo">💎 Catálogo</button>
+    <button class="nav-link" data-view="cuentasff">🎮 Cuentas FF</button>
+    <button class="nav-link" data-view="admin" id="navAdminLink" style="display:none;">🛡️ Admin</button>
+    <button class="nav-link logout" id="logoutBtn">🚪 Cerrar sesión</button>
+  </nav>
+
+  <!-- VISTA HOGAR -->
+  <section class="view active" id="view-hogar">
+    <div class="view-inner">
+      <div class="fade-item eyebrow">Bienvenido, guerrero</div>
+      <h1 class="fade-item brand">ZNAPY7SENSI</h1>
+      <p class="fade-item tagline">Tu tienda de confianza dentro de la Zona Segura. Diamantes, pases, skins y cuentas de Free Fire, directo a tu WhatsApp.</p>
+
+      <div class="fade-item glass card-block">
+        <h2>Quiénes somos</h2>
+        <p>Somos jugadores como tú. Empezamos vendiendo diamantes entre el clan y hoy abastecemos a cientos de squads en cada partida. Trato directo, entrega rápida y cero rush innecesario.</p>
+      </div>
+
+      <div class="fade-item glass card-block">
+        <h2>Qué ofrecemos</h2>
+        <ul class="features">
+          <li class="glass">Diamantes y pases al mejor precio</li>
+          <li class="glass">Cuentas FF verificadas con nivel y skins</li>
+          <li class="glass">Entrega en minutos, coordinada por WhatsApp</li>
+          <li class="glass">Soporte real, sin bots</li>
+        </ul>
+      </div>
+
+      <h2 class="fade-item" style="margin-top:26px;">Únete al escuadrón</h2>
+      <div class="fade-item social-grid">
+        <a class="social-card glass" href="https://www.tiktok.com/@tuusuario" target="_blank" rel="noopener"><span class="badge b-tiktok">TT</span><span>TikTok</span></a>
+        <a class="social-card glass" href="https://discord.gg/tuinvitacion" target="_blank" rel="noopener"><span class="badge b-discord">D</span><span>Discord</span></a>
+        <a class="social-card glass" href="https://wa.me/51999999999" target="_blank" rel="noopener"><span class="badge b-whatsapp">WA</span><span>WhatsApp</span></a>
+        <a class="social-card glass" href="https://www.instagram.com/tuusuario" target="_blank" rel="noopener"><span class="badge b-instagram">IG</span><span>Instagram</span></a>
+      </div>
+      <div class="fade-item note glass">Estos enlaces son de ejemplo — reemplázalos por los reales.</div>
+      <footer class="foot fade-item">© 2026 Znapy7sensi · No afiliado a Garena Free Fire</footer>
+    </div>
+  </section>
+
+  <!-- VISTA CATALOGO -->
+  <section class="view" id="view-catalogo">
+    <div class="view-inner">
+      <div class="fade-item eyebrow">Catálogo</div>
+      <h2 class="fade-item" style="font-size:1.8rem;">Equípate para la próxima partida</h2>
+      <p class="fade-item">Toca "Comprar por WhatsApp" y te abrimos el chat con el pedido ya escrito.</p>
+      <div class="grid-products" id="productGrid"></div>
+    </div>
+  </section>
+
+  <!-- VISTA CUENTAS FF -->
+  <section class="view" id="view-cuentasff">
+    <div class="view-inner">
+      <div class="fade-item eyebrow">Cuentas FF</div>
+      <h2 class="fade-item" style="font-size:1.8rem;">Cuentas en venta</h2>
+      <p class="fade-item">Cada cuenta incluye lo indicado en su descripción. Consulta más detalles por WhatsApp antes de pagar.</p>
+      <div class="grid-products" id="ffGrid"></div>
+    </div>
+  </section>
+
+  <!-- VISTA ADMIN -->
+  <section class="view" id="view-admin">
+    <div class="view-inner">
+      <div class="fade-item eyebrow">Panel de administración</div>
+      <h2 class="fade-item" style="font-size:1.8rem;">Control total</h2>
+
+      <div class="fade-item glass card-block">
+        <h2>Agregar producto (Catálogo)</h2>
+        <form class="admin-form" id="formAddProduct">
+          <input type="text" id="pName" placeholder="Nombre (ej. Diamantes x100)" required>
+          <input type="text" id="pPrice" placeholder="Precio (ej. S/ 5)" required>
+          <input type="text" id="pEmoji" placeholder="Emoji (ej. 💎)" maxlength="4" required>
+          <button class="mini-btn orange" type="submit">Agregar al catálogo</button>
+        </form>
+      </div>
+
+      <div class="fade-item glass card-block">
+        <h2>Agregar cuenta FF</h2>
+        <form class="admin-form" id="formAddFF">
+          <input type="text" id="fName" placeholder="Nombre (ej. Cuenta Nivel 60 + Skins)" required>
+          <input type="text" id="fPrice" placeholder="Precio (ej. S/ 80)" required>
+          <input type="text" id="fEmoji" placeholder="Emoji (ej. 🎮)" maxlength="4" required>
+          <button class="mini-btn orange" type="submit">Agregar a Cuentas FF</button>
+        </form>
+      </div>
+
+      <div class="fade-item glass card-block">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <h2 style="margin:0;">Usuarios registrados</h2>
+          <button class="mini-btn ghost refresh-btn" id="refreshUsers">Actualizar</button>
+        </div>
+        <div id="usersList"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- SOPORTE FLOTANTE (siempre visible) -->
+<a id="supportBtn" href="https://wa.me/51999999999?text=Hola%2C%20necesito%20soporte" target="_blank" rel="noopener" title="Soporte">🎧</a>
+
+<script>
+  // ---------- SUPABASE ----------
+  // Reemplaza estas dos líneas con tu Project URL y anon key (Configuración del proyecto → API)
+  const SUPABASE_URL = "https://uxzslkrrcttveogvdgnh.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4enNsa3JyY3R0dmVvZ3ZkZ25oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1MTY4MzMsImV4cCI6MjEwNjA5MjgzM30.arkImoN_evMZ4VjYrjmD2offpgpbX1xHmk6IA_v57NU";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentRole = "cliente";
+  let currentUserId = null;
+  let banCheckInterval = null;
+
+  // ---------- AUTH GATE UI ----------
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const authMsg = document.getElementById('authMsg');
+
+  tabLogin.addEventListener('click', () => {
+    tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+    loginForm.style.display = 'block'; registerForm.style.display = 'none'; showAuthMsg('', '');
+  });
+  tabRegister.addEventListener('click', () => {
+    tabRegister.classList.add('active'); tabLogin.classList.remove('active');
+    registerForm.style.display = 'block'; loginForm.style.display = 'none'; showAuthMsg('', '');
+  });
+
+  function showAuthMsg(text, type){
+    authMsg.textContent = text;
+    authMsg.className = 'auth-msg ' + (type || '');
+  }
+
+  function traducirError(msg){
+    if (!msg) return 'Ocurrió un error, intenta de nuevo.';
+    if (msg.includes('already registered')) return 'Ese correo ya está registrado.';
+    if (msg.includes('Invalid login credentials')) return 'Correo o contraseña incorrectos.';
+    if (msg.includes('Password should be')) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (msg.includes('valid email')) return 'Correo inválido.';
+    return msg;
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showAuthMsg('Entrando...', '');
+    const { error } = await sb.auth.signInWithPassword({
+      email: document.getElementById('loginEmail').value.trim(),
+      password: document.getElementById('loginPass').value
+    });
+    if (error) showAuthMsg(traducirError(error.message), 'error');
+  });
+
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showAuthMsg('Creando cuenta...', '');
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPass').value;
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error){ showAuthMsg(traducirError(error.message), 'error'); return; }
+    if (data.user){
+      const { error: profileError } = await sb.from('profiles').insert({
+        id: data.user.id, email: data.user.email, role: 'cliente', banned: false
+      });
+      if (profileError) showAuthMsg(traducirError(profileError.message), 'error');
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', () => sb.auth.signOut());
+
+  // ---------- ESTADO DE SESIÓN ----------
+  async function handleSession(session){
+    if (banCheckInterval) clearInterval(banCheckInterval);
+    if (!session){
+      document.getElementById('authGate').style.display = 'flex';
+      document.getElementById('appRoot').style.display = 'none';
+      loginForm.reset(); registerForm.reset();
+      return;
+    }
+    currentUserId = session.user.id;
+    const { data: profile, error } = await sb.from('profiles').select('*').eq('id', currentUserId).single();
+    if (error || !profile) return;
+    if (profile.banned){
+      showAuthMsg('Tu cuenta ha sido suspendida. Contacta a soporte.', 'error');
+      await sb.auth.signOut();
+      return;
+    }
+    currentRole = profile.role || 'cliente';
+    document.getElementById('navAdminLink').style.display = currentRole === 'admin' ? 'flex' : 'none';
+    document.getElementById('navEmail').textContent = profile.email;
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    loadProducts(); loadFFAccounts();
+    if (currentRole === 'admin') loadUsers();
+
+    // revisa cada 20s si lo banearon mientras navega
+    banCheckInterval = setInterval(async () => {
+      const { data: p } = await sb.from('profiles').select('banned').eq('id', currentUserId).single();
+      if (p && p.banned){ clearInterval(banCheckInterval); await sb.auth.signOut(); }
+    }, 20000);
+  }
+
+  sb.auth.getSession().then(({ data }) => handleSession(data.session));
+  sb.auth.onAuthStateChange((_event, session) => handleSession(session));
+
+  // ---------- NAVEGACIÓN ENTRE VISTAS ----------
+  const menuBtn = document.getElementById('menuBtn');
+  const navPanel = document.getElementById('navPanel');
+  const overlay = document.getElementById('overlay');
+  const viewIds = ['hogar','catalogo','cuentasff','admin'];
+  const links = document.querySelectorAll('.nav-link[data-view]');
+
+  function toggleMenu(force){
+    const open = force !== undefined ? force : !navPanel.classList.contains('open');
+    menuBtn.classList.toggle('open', open); navPanel.classList.toggle('open', open); overlay.classList.toggle('open', open);
+  }
+  menuBtn.addEventListener('click', () => toggleMenu());
+  overlay.addEventListener('click', () => toggleMenu(false));
+
+  function goTo(name){
+    viewIds.forEach(id => {
+      const el = document.getElementById('view-' + id);
+      if (id === name){ el.classList.remove('active'); void el.offsetWidth; el.classList.add('active'); }
+      else el.classList.remove('active');
+    });
+    links.forEach(l => l.classList.toggle('current', l.dataset.view === name));
+    toggleMenu(false);
+    if (name === 'catalogo') loadProducts();
+    if (name === 'cuentasff') loadFFAccounts();
+    if (name === 'admin' && currentRole === 'admin') loadUsers();
+  }
+  links.forEach(l => l.addEventListener('click', () => goTo(l.dataset.view)));
+  links[0].classList.add('current');
+
+  // ---------- WHATSAPP ----------
+  const WHATSAPP_NUMBER = "51999999999";
+  function waLink(name, price){
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola, quiero comprar: ${name} (${price})`)}`;
+  }
+
+  // ---------- RENDER CATALOGO / CUENTAS FF ----------
+  function renderGrid(container, items, tableName){
+    container.innerHTML = '';
+    if (!items || items.length === 0){
+      container.innerHTML = `<div class="empty-msg fade-item">Todavía no hay artículos aquí.${currentRole==='admin' ? ' Agrégalos desde el panel Admin.' : ''}</div>`;
+      return;
+    }
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card glass fade-item';
+      card.innerHTML = `
+        ${currentRole === 'admin' ? `<button class="del-btn" data-id="${item.id}" data-table="${tableName}">✕</button>` : ''}
+        <div class="thumb">${item.emoji || '🔥'}</div>
+        <div class="card-body">
+          <h3>${item.name}</h3>
+          <div class="price">${item.price}</div>
+          <a class="buy-btn" href="${waLink(item.name, item.price)}" target="_blank" rel="noopener">Comprar por WhatsApp</a>
+        </div>`;
+      container.appendChild(card);
+    });
+    container.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await sb.from(btn.dataset.table).delete().eq('id', btn.dataset.id);
+        if (btn.dataset.table === 'products') loadProducts(); else loadFFAccounts();
+      });
+    });
+  }
+
+  async function loadProducts(){
+    const { data } = await sb.from('products').select('*').order('created_at', { ascending: false });
+    renderGrid(document.getElementById('productGrid'), data, 'products');
+  }
+  async function loadFFAccounts(){
+    const { data } = await sb.from('ff_accounts').select('*').order('created_at', { ascending: false });
+    renderGrid(document.getElementById('ffGrid'), data, 'ff_accounts');
+  }
+
+  async function loadUsers(){
+    const { data: users } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+    const list = document.getElementById('usersList');
+    list.innerHTML = '';
+    (users || []).forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'user-row glass fade-item';
+      row.innerHTML = `
+        <div class="user-info"><b>${u.email}</b>
+          ${u.role === 'admin' ? '<span class="tag admin">admin</span>' : ''}
+          ${u.banned ? '<span class="tag banned">baneado</span>' : ''}
+        </div>
+        <div class="user-actions">
+          <button class="mini-btn ghost" data-action="ban" data-id="${u.id}" data-val="${!u.banned}">${u.banned ? 'Desbanear' : 'Banear'}</button>
+          <button class="mini-btn ghost" data-action="role" data-id="${u.id}" data-val="${u.role === 'admin' ? 'cliente' : 'admin'}">${u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>
+        </div>`;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('[data-action="ban"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await sb.from('profiles').update({ banned: btn.dataset.val === 'true' }).eq('id', btn.dataset.id);
+        loadUsers();
+      });
+    });
+    list.querySelectorAll('[data-action="role"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await sb.from('profiles').update({ role: btn.dataset.val }).eq('id', btn.dataset.id);
+        loadUsers();
+      });
+    });
+  }
+  document.getElementById('refreshUsers').addEventListener('click', loadUsers);
+
+  // ---------- FORMULARIOS ADMIN ----------
+  document.getElementById('formAddProduct').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await sb.from('products').insert({
+      name: document.getElementById('pName').value.trim(),
+      price: document.getElementById('pPrice').value.trim(),
+      emoji: document.getElementById('pEmoji').value.trim()
+    });
+    e.target.reset();
+    loadProducts();
+  });
+
+  document.getElementById('formAddFF').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await sb.from('ff_accounts').insert({
+      name: document.getElementById('fName').value.trim(),
+      price: document.getElementById('fPrice').value.trim(),
+      emoji: document.getElementById('fEmoji').value.trim()
+    });
+    e.target.reset();
+    loadFFAccounts();
+  });
+</script>
+
+</body>
+</html>
