@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "Znapy7sensi",
+  "short_name": "Znapy7sensi",
+  "description": "Tienda de diamantes, pases, skins y cuentas de Free Fire.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D0117",
+  "theme_color": "#FF6A1A",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
